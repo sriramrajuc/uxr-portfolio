@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Sriram Raju — A Researcher's Journey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* =========================================================================
+   THEME TOKENS — colors & sizing. Safe to tweak hex values if you like.
+   ========================================================================= */
+:root{
+  --ink:#22223b; --ink-soft:#4a4a63; --cream:#fdf6ec;
+  --gold:#ffd166; --gold-deep:#f4a259; --glow:#8e7cff; --glow-soft:#b8acff;
+  --land-1:#2e5e4e; --land-2:#3c7a6a; --land-3:#1f4a3d;
+  --card-bg:rgba(253,246,236,0.94); --card-line:rgba(34,34,59,0.10);
+  --shadow:0 18px 50px rgba(20,20,50,0.28);
+  --display:'Fredoka',system-ui,sans-serif;
+  --body:'Nunito',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--body); color:var(--ink); background:#0e1030;
+  overflow:hidden; -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+:focus-visible{outline:3px solid var(--glow);outline-offset:3px;border-radius:10px}
+
+/* =========================================================================
+   STAGE — fixed full-screen viewport that the whole journey lives inside.
+   ========================================================================= */
+.stage{position:fixed;inset:0;overflow:hidden}
+
+/* ---- SKY: four stacked gradient layers we cross-fade by progress ---- */
+.sky{position:absolute;inset:0;z-index:0}
+.sky-layer{position:absolute;inset:0;transition:opacity 2.2s ease}
+.sky-dawn{background:linear-gradient(180deg,#ffe1b0 0%,#ffb4a2 40%,#b9b6ef 100%);opacity:1}
+.sky-day {background:linear-gradient(180deg,#9bd4ef 0%,#c8ecf7 55%,#eafbff 100%);opacity:0}
+.sky-dusk{background:linear-gradient(180deg,#ff9e6d 0%,#ff6a88 42%,#5b51b8 100%);opacity:0}
+.sky-night{background:linear-gradient(180deg,#10133a 0%,#1d1f57 55%,#2c2c6c 100%);opacity:0}
+
+/* a soft sun/moon that drifts up then down across the sky */
+.orb{position:absolute;width:120px;height:120px;border-radius:50%;
+  left:50%;transform:translate(-50%,0);z-index:1;
+  background:radial-gradient(circle at 38% 38%,#fff6d8,#ffd166 60%,rgba(255,209,102,0) 72%);
+  filter:blur(0.3px);transition:top 1.6s ease, background 2.2s ease, filter 2.2s ease}
+
+.stars{position:absolute;inset:0;z-index:1;opacity:0;transition:opacity 2.2s ease;pointer-events:none}
+.star{position:absolute;width:2px;height:2px;border-radius:50%;background:#fff;
+  animation:twinkle 3.4s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.3)}}
+
+.motes{position:absolute;inset:0;z-index:4;pointer-events:none}
+.mote{position:absolute;border-radius:50%;background:rgba(255,255,255,.7);
+  filter:blur(.4px);animation:float linear infinite}
+@keyframes float{
+  0%{transform:translateY(20px);opacity:0}
+  12%{opacity:.9}88%{opacity:.9}
+  100%{transform:translateY(-110vh);opacity:0}}
+
+/* ---- PARALLAX STRIPS: each pans at its own rate to create depth ---- */
+.strip{position:absolute;top:0;height:100%;left:0;will-change:transform;
+  transition:transform 1.6s cubic-bezier(.45,.05,.2,1)}
+.strip svg{position:absolute;bottom:0;left:0;width:100%;height:100%}
+.z-far {z-index:2}
+.z-mid {z-index:3}
+.z-near{z-index:5}
+.z-fore{z-index:7}
+
+/* ---- THE PATH + NODES live on the near plane ---- */
+.node{position:absolute;bottom:24%;transform:translateX(-50%);z-index:6;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  transition:transform .3s ease;background:none}
+.node .post{width:5px;height:46px;border-radius:4px;
+  background:linear-gradient(180deg,#7c5b3a,#5a3f27)}
+.node .lamp{width:34px;height:34px;border-radius:50%;
+  background:radial-gradient(circle at 40% 38%,#fff3cf,#ffce63 62%,#e89b3c);
+  box-shadow:0 0 0 4px rgba(255,206,99,.18),0 0 26px rgba(255,206,99,.55);
+  display:grid;place-items:center;font:600 14px/1 var(--display);color:#6b4a17}
+.node .flag{font:600 12px/1 var(--body);color:var(--cream);
+  background:rgba(20,20,50,.45);padding:4px 9px;border-radius:999px;
+  white-space:nowrap;backdrop-filter:blur(3px);max-width:42vw;overflow:hidden;text-overflow:ellipsis}
+.node.locked{filter:grayscale(.9) brightness(.7);opacity:.55}
+.node.locked .lamp{box-shadow:none;background:#9a9aa6}
+.node.next{cursor:pointer;animation:beckon 1.9s ease-in-out infinite}
+.node.next .lamp{box-shadow:0 0 0 6px rgba(142,124,255,.22),0 0 34px rgba(142,124,255,.7)}
+.node.current .lamp{box-shadow:0 0 0 7px rgba(255,206,99,.28),0 0 40px rgba(255,206,99,.85)}
+.node.visited{cursor:pointer}
+@keyframes beckon{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-7px)}}
+
+/* ---- THE TRAVELER (original character) sits at screen-center, world scrolls under ---- */
+.hero{position:absolute;left:24%;bottom:24%;z-index:6;width:64px;height:84px;
+  transform:translateX(-50%);transition:left 1.6s cubic-bezier(.45,.05,.2,1)}
+.hero .body{animation:bob 2.6s ease-in-out infinite;transform-origin:bottom center}
+.hero.walking .body{animation:walkbob .5s ease-in-out infinite}
+.hero .shadow{position:absolute;bottom:-6px;left:50%;width:46px;height:11px;
+  transform:translateX(-50%);border-radius:50%;background:rgba(10,10,30,.28);filter:blur(2px)}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes walkbob{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-3px) rotate(1.5deg)}}
+.dust{position:absolute;bottom:0;left:50%;width:8px;height:8px;border-radius:50%;
+  background:rgba(255,255,255,.55);opacity:0}
+.hero.walking .dust{animation:puff .5s ease-out infinite}
+@keyframes puff{0%{opacity:.7;transform:translate(-50%,0) scale(.5)}100%{opacity:0;transform:translate(-160%,-10px) scale(1.4)}}
+
+.spark{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--gold);
+  z-index:8;pointer-events:none;opacity:0}
+@keyframes burst{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:var(--to) scale(.2)}}
+
+/* =========================================================================
+   TOP BAR
+   ========================================================================= */
+.topbar{position:absolute;top:0;left:0;right:0;z-index:20;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px clamp(16px,4vw,40px);}
+.brand{display:flex;flex-direction:column;line-height:1.05;color:var(--cream);
+  text-shadow:0 2px 10px rgba(10,10,40,.4)}
+.brand b{font:600 clamp(17px,2.4vw,22px)/1 var(--display);letter-spacing:.2px}
+.brand span{font:700 11px/1.3 var(--body);letter-spacing:.12em;text-transform:uppercase;opacity:.85;margin-top:4px}
+.nav{display:flex;gap:8px}
+.nav button{color:var(--cream);font:700 13px/1 var(--body);
+  padding:9px 14px;border-radius:999px;background:rgba(20,20,50,.32);
+  backdrop-filter:blur(6px);transition:transform .15s,background .15s}
+.nav button:hover{transform:translateY(-2px);background:rgba(20,20,50,.5)}
+
+/* =========================================================================
+   HUD — chapter counter, time-of-day, continue button
+   ========================================================================= */
+.hud{position:absolute;left:0;right:0;bottom:0;z-index:20;
+  display:flex;align-items:flex-end;justify-content:space-between;gap:14px;
+  padding:0 clamp(16px,4vw,40px) clamp(18px,3vh,28px);pointer-events:none}
+.hud > *{pointer-events:auto}
+.tracker{color:var(--cream);font:700 12px/1.4 var(--body);letter-spacing:.1em;
+  text-transform:uppercase;text-shadow:0 2px 8px rgba(10,10,40,.5);display:flex;align-items:center;gap:10px}
+.tod{font-size:18px}
+.cta{font:700 15px/1 var(--display);color:#3a2a05;
+  background:linear-gradient(180deg,#ffe08a,#ffce63);
+  padding:14px 24px;border-radius:999px;box-shadow:0 10px 30px rgba(244,162,89,.5);
+  transition:transform .15s,box-shadow .15s}
+.cta:hover{transform:translateY(-3px);box-shadow:0 16px 38px rgba(244,162,89,.6)}
+.cta:active{transform:translateY(0)}
+
+/* =========================================================================
+   STORY CARD — slides up when you arrive at a chapter
+   ========================================================================= */
+.story{position:absolute;right:clamp(16px,7vw,110px);bottom:84px;
+  transform:translateY(30px);
+  z-index:18;width:min(560px,90vw);background:var(--card-bg);border-radius:22px;
+  padding:24px 26px 22px;box-shadow:var(--shadow);border:1px solid var(--card-line);
+  opacity:0;pointer-events:none;transition:opacity .6s ease,transform .6s ease}
+.story.show{opacity:1;transform:translateY(0);pointer-events:auto}
+.story .eyebrow{font:700 12px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;
+  color:var(--gold-deep);margin-bottom:8px}
+.story h2{font:600 clamp(22px,3.4vw,30px)/1.1 var(--display);color:var(--ink);margin-bottom:10px}
+.story p{font:400 clamp(14px,1.9vw,16.5px)/1.6 var(--body);color:var(--ink-soft)}
+.story .swap{transition:opacity .35s ease}
+
+/* =========================================================================
+   INTRO SCREEN
+   ========================================================================= */
+.intro{position:absolute;inset:0;z-index:30;display:grid;place-items:center;
+  text-align:center;padding:24px;transition:opacity .9s ease;}
+.intro.gone{opacity:0;pointer-events:none}
+.intro-inner{max-width:680px;color:var(--cream);text-shadow:0 3px 18px rgba(10,10,40,.45)}
+.intro .kicker{font:700 13px/1 var(--body);letter-spacing:.22em;text-transform:uppercase;opacity:.9}
+.intro h1{font:600 clamp(34px,8vw,72px)/1.02 var(--display);margin:14px 0 6px}
+.intro .role{font:600 clamp(16px,2.6vw,21px)/1.3 var(--display);opacity:.95}
+.intro .tag{font:400 clamp(14px,2.2vw,17px)/1.55 var(--body);opacity:.9;margin:18px auto 28px;max-width:520px}
+.intro .begin{font:700 17px/1 var(--display);color:#3a2a05;
+  background:linear-gradient(180deg,#ffe08a,#ffce63);padding:17px 34px;border-radius:999px;
+  box-shadow:0 14px 40px rgba(244,162,89,.55);transition:transform .18s}
+.intro .begin:hover{transform:translateY(-3px) scale(1.02)}
+.intro .hint{display:block;margin-top:18px;font:600 12px/1 var(--body);letter-spacing:.06em;opacity:.7}
+.intro-inner{animation:rise 1s .2s both}
+@keyframes rise{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:translateY(0)}}
+
+/* =========================================================================
+   OVERLAYS — Field Notes (projects) & Traveler's Profile (about)
+   ========================================================================= */
+.overlay{position:absolute;inset:0;z-index:40;background:rgba(12,14,40,.72);
+  backdrop-filter:blur(8px);display:flex;justify-content:center;align-items:flex-start;
+  padding:clamp(16px,5vh,60px) 16px;overflow-y:auto;opacity:0;pointer-events:none;
+  transition:opacity .4s ease}
+.overlay.open{opacity:1;pointer-events:auto}
+.sheet{width:min(900px,100%);background:var(--cream);border-radius:26px;
+  box-shadow:var(--shadow);padding:clamp(22px,4vw,40px);position:relative;
+  transform:translateY(20px);transition:transform .4s ease}
+.overlay.open .sheet{transform:translateY(0)}
+.sheet .close{position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;
+  background:var(--ink);color:var(--cream);font:700 18px/1 var(--body);display:grid;place-items:center;
+  transition:transform .15s}
+.sheet .close:hover{transform:rotate(90deg)}
+.sheet .ov-kicker{font:700 12px/1 var(--body);letter-spacing:.16em;text-transform:uppercase;color:var(--gold-deep)}
+.sheet h3{font:600 clamp(24px,4vw,34px)/1.05 var(--display);color:var(--ink);margin:8px 0 6px}
+.sheet .lede{font:400 15px/1.55 var(--body);color:var(--ink-soft);max-width:60ch;margin-bottom:22px}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.pcard{text-align:left;background:#fff;border:1px solid var(--card-line);border-radius:18px;
+  padding:18px 18px 16px;box-shadow:0 6px 18px rgba(20,20,50,.06);
+  transition:transform .18s,box-shadow .18s;display:flex;flex-direction:column;gap:8px}
+.pcard:hover{transform:translateY(-4px);box-shadow:0 16px 34px rgba(20,20,50,.12)}
+.pcard .ptag{align-self:flex-start;font:700 11px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;
+  color:var(--glow);background:rgba(142,124,255,.12);padding:6px 10px;border-radius:999px}
+.pcard h4{font:600 18px/1.2 var(--display);color:var(--ink)}
+.pcard .pteaser{font:400 13.5px/1.5 var(--body);color:var(--ink-soft)}
+.pcard .pmore{font:700 12px/1 var(--body);color:var(--gold-deep);margin-top:2px}
+.pdetail{display:none;font:400 13.5px/1.55 var(--body);color:var(--ink-soft);
+  border-top:1px dashed var(--card-line);padding-top:10px;margin-top:2px}
+.pcard.open .pdetail{display:block;animation:fade .3s ease}
+.pcard.open .pmore{display:none}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+.abilities{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:8px}
+.abil h5{font:600 13px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--gold-deep);margin-bottom:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:600 13px/1 var(--body);color:var(--ink);background:rgba(34,34,59,.06);
+  border:1px solid var(--card-line);padding:8px 12px;border-radius:999px}
+.links{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
+.links a{font:700 14px/1 var(--display);text-decoration:none;color:#3a2a05;
+  background:linear-gradient(180deg,#ffe08a,#ffce63);padding:12px 20px;border-radius:999px;
+  transition:transform .15s}
+.links a.ghost{background:none;color:var(--ink);border:1.5px solid var(--ink)}
+.links a:hover{transform:translateY(-2px)}
+
+/* =========================================================================
+   RESPONSIVE + REDUCED MOTION
+   ========================================================================= */
+@media(max-width:600px){
+  .nav button{padding:8px 11px;font-size:12px}
+  .brand span{display:none}
+  .story{bottom:78px;right:5vw;left:5vw;width:auto}
+}
+@media(prefers-reduced-motion:reduce){
+  .strip,.hero,.sky-layer,.orb,.story{transition-duration:.01ms !important}
+  .mote,.node.next,.hero .body,.star{animation:none !important}
+}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+
+  <!-- SKY -->
+  <div class="sky">
+    <div class="sky-layer sky-dawn"></div>
+    <div class="sky-layer sky-day"></div>
+    <div class="sky-layer sky-dusk"></div>
+    <div class="sky-layer sky-night"></div>
+  </div>
+  <div class="orb" id="orb" style="top:18%"></div>
+  <div class="stars" id="stars"></div>
+
+  <!-- PARALLAX LANDSCAPE -->
+  <div class="strip z-far" id="far">
+    <svg viewBox="0 0 1200 600" preserveAspectRatio="none">
+      <path d="M0,420 L120,300 L230,400 L360,250 L500,400 L640,290 L780,410 L920,270 L1060,400 L1200,330 L1200,600 L0,600 Z"
+        fill="rgba(120,128,200,0.38)"/>
+    </svg>
+  </div>
+  <div class="strip z-mid" id="mid">
+    <svg viewBox="0 0 1200 600" preserveAspectRatio="none">
+      <path d="M0,470 C160,400 300,470 460,440 C640,405 760,485 940,450 C1080,425 1140,470 1200,455 L1200,600 L0,600 Z"
+        fill="rgba(60,122,106,0.55)"/>
+    </svg>
+  </div>
+  <div class="strip z-near" id="near">
+    <svg viewBox="0 0 1200 600" preserveAspectRatio="none">
+      <path d="M0,520 C200,470 320,545 520,520 C720,496 820,560 1020,525 C1120,508 1160,535 1200,528 L1200,600 L0,600 Z"
+        fill="#2e5e4e"/>
+    </svg>
+    <!-- nodes injected here by JS -->
+  </div>
+  <div class="strip z-fore" id="fore">
+    <svg viewBox="0 0 1200 600" preserveAspectRatio="none">
+      <path d="M0,575 C240,555 360,590 600,572 C840,556 960,592 1200,574 L1200,600 L0,600 Z" fill="#1f4a3d"/>
+    </svg>
+  </div>
+
+  <!-- TRAVELER -->
+  <div class="hero" id="hero" aria-hidden="true">
+    <div class="shadow"></div>
+    <div class="dust"></div>
+    <div class="body">
+      <svg width="64" height="84" viewBox="0 0 64 84" xmlns="http://www.w3.org/2000/svg">
+        <!-- lantern -->
+        <line x1="49" y1="30" x2="49" y2="46" stroke="#3a2a14" stroke-width="2"/>
+        <circle cx="49" cy="52" r="9" fill="#ffce63"/>
+        <circle cx="49" cy="52" r="14" fill="rgba(255,206,99,0.35)"/>
+        <!-- cloak / body -->
+        <path d="M32 30 C20 30 16 44 15 64 C14 74 18 80 32 80 C46 80 50 74 49 64 C48 44 44 30 32 30 Z" fill="#3c7a6a"/>
+        <path d="M32 30 C26 30 22 40 21 64 C21 74 24 80 32 80 L32 30 Z" fill="#2e5e4e"/>
+        <!-- backpack -->
+        <rect x="14" y="40" width="10" height="20" rx="4" fill="#c46a3f"/>
+        <!-- head + hood -->
+        <circle cx="32" cy="22" r="13" fill="#ffd9b3"/>
+        <path d="M19 22 C19 9 45 9 45 22 C45 16 40 11 32 11 C24 11 19 16 19 22 Z" fill="#3c7a6a"/>
+        <circle cx="28" cy="22" r="1.6" fill="#3a2a14"/>
+        <circle cx="37" cy="22" r="1.6" fill="#3a2a14"/>
+        <path d="M30 26 Q32.5 28 35 26" stroke="#b9764a" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="motes" id="motes"></div>
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="brand"><b id="brandName">Sriram Raju</b><span id="brandRole">Principal UX Researcher</span></div>
+    <nav class="nav">
+      <button id="navJourney">Journey</button>
+      <button id="navProjects">Field Notes</button>
+      <button id="navAbout">About</button>
+    </nav>
+  </header>
+
+  <!-- STORY CARD -->
+  <article class="story" id="story" aria-live="polite">
+    <div class="eyebrow"><span id="stEyebrow">Chapter 1</span></div>
+    <h2 class="swap" id="stTitle">Title</h2>
+    <p class="swap" id="stBody">Body</p>
+  </article>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="tracker"><span class="tod" id="todIcon">&#9728;</span><span id="tracker">Chapter 1 of 7</span></div>
+    <button class="cta" id="cta">Continue &rarr;</button>
+  </div>
+
+  <!-- INTRO -->
+  <div class="intro" id="intro">
+    <div class="intro-inner">
+      <div class="kicker">A Researcher's Journey</div>
+      <h1 id="introName">Sriram Raju</h1>
+      <div class="role" id="introRole">Principal UX Researcher &middot; Boomi</div>
+      <p class="tag" id="introTag">Tagline goes here.</p>
+      <button class="begin" id="beginBtn">Begin the journey &rarr;</button>
+      <span class="hint">Tap the glowing lantern (or press &rarr;) to walk forward</span>
+    </div>
+  </div>
+
+  <!-- PROJECTS OVERLAY -->
+  <div class="overlay" id="ovProjects">
+    <div class="sheet">
+      <button class="close" data-close="ovProjects" aria-label="Close">&times;</button>
+      <div class="ov-kicker">Field Notes</div>
+      <h3>Selected work</h3>
+      <p class="lede" id="projLede">Tap any card to open it.</p>
+      <div class="cards" id="cardGrid"></div>
+    </div>
+  </div>
+
+  <!-- ABOUT OVERLAY -->
+  <div class="overlay" id="ovAbout">
+    <div class="sheet">
+      <button class="close" data-close="ovAbout" aria-label="Close">&times;</button>
+      <div class="ov-kicker">The Traveler</div>
+      <h3 id="aboutName">About</h3>
+      <p class="lede" id="aboutBio"></p>
+      <div class="abilities" id="abilGrid"></div>
+      <div class="links" id="linkRow"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* =========================================================================
+   ▼▼▼  EDIT YOUR CONTENT HERE — no coding needed.  ▼▼▼
+   Change the text inside the "quotes". Keep the commas, brackets and
+   curly braces exactly where they are. Each {...} block is one item.
+   ========================================================================= */
+
+const PROFILE = {
+  name:    "Sriram Raju",
+  role:    "Principal UX Researcher · Boomi",
+  location:"Chennai, India",
+  tagline: "Life as a journey — and a few field notes from studying how people and machines learn to work together.",
+  bio:     "Principal UX Researcher at Boomi. I study how people behave across Boomi's products — and, increasingly, how they work alongside AI. I care about methodology you can trust, findings teams can act on, and making good research repeatable instead of heroic.",
+  email:   "your-email@example.com",        // <-- put your real email
+  linkedin:"https://www.linkedin.com/in/sriram-raju"
+};
+
+// THE JOURNEY — one block per chapter. Sky moves dawn -> day -> dusk -> night.
+const JOURNEY = [
+  { flag:"The Spark", eyebrow:"Where it began",
+    title:"The Spark",
+    body:"It started in college, with a final-year project: a system to automate the infusion of anesthesia during surgery, designed around a very human risk — getting the dose wrong. It was selected for an international conference. The lesson stuck: the most interesting problems sit exactly where people and machines meet." },
+
+  { flag:"Learning the craft", eyebrow:"Early career",
+    title:"Learning the Craft",
+    body:"First real field studies — at Google and Kaiser Permanente — watching people actually use products, running usability tests, and turning messy behavior into clear design direction. This is where research stopped being a subject and became a way of seeing." },
+
+  { flag:"Building for India", eyebrow:"Scale & speed",
+    title:"Closer to Home",
+    body:"Back in India with Rapido and Embibe — research at the pace of fast-moving consumer products, for millions of everyday users on mobility and learning apps. Tight timelines, huge scale, and users who never read the manual taught me to find the signal quickly." },
+
+  { flag:"Boomi", eyebrow:"A new map",
+    title:"Arriving at Boomi",
+    body:"Joined Boomi's Platform team — connectors, trials, task automation, and the tools that let companies wire their software together. A complex, technical world where a small research insight can change how thousands of builders work." },
+
+  { flag:"AI-first", eyebrow:"The turn",
+    title:"Research, Reimagined with AI",
+    body:"Began building an AI-first research practice: reusable research 'skills', simulated study pre-flights, faster transcript analysis, and ways to keep quality high while moving faster. The aim — make great research repeatable, not dependent on one person's heroics." },
+
+  { flag:"Principal", eyebrow:"Now",
+    title:"Principal",
+    body:"Promoted to Principal UX Researcher, repositioning research as the team's insight-quality and enablement layer — helping non-researchers safely self-serve validated insights, and proving research impact in language the business understands." },
+
+  { flag:"The road ahead", eyebrow:"What's next",
+    title:"What's Next",
+    body:"Still walking. Curious about agentic AI, 'citizen' users who don't code, and the methods we'll need when the people we study work alongside intelligent tools. If that's your kind of road too — open the Field Notes, or let's talk." }
+];
+
+// FIELD NOTES — your projects. Tap a card to reveal "detail".
+const PROJECTS = [
+  { tag:"AI-native research", title:"AI-First Research Practice",
+    teaser:"Reusable research workflows and a library of 'skills' the team can run on demand.",
+    detail:"Method: turned recurring research tasks — briefs, transcript tagging, competitor audits, study pre-flights — into repeatable, validated workflows. Impact: faster studies with more consistent quality, and research capacity that scales beyond any single researcher." },
+
+  { tag:"Activation", title:"Trial & Onboarding Studies",
+    teaser:"How new users — including non-technical 'citizen' users — experience the first 30 days.",
+    detail:"Method: moderated and unmoderated sessions on first-run trial and task-automation onboarding. Impact: a clearer map of where new users stall early on, and which moments pull them deeper into the platform." },
+
+  { tag:"Core platform", title:"Connectors & Integration UX",
+    teaser:"How builders create and monitor integrations — connectors and listener status.",
+    detail:"Method: task-based usability research following real integration-building flows. Impact: surfaced exactly where builders lose confidence mid-flow, feeding directly into design fixes." },
+
+  { tag:"Foundational", title:"Platform Foundation Research",
+    teaser:"Defining the user landscape and personas for a new platform area.",
+    detail:"Method: generative, foundational research across multiple user cohorts. Impact: a shared, evidence-based picture of who we're building for, used across product, design and engineering." },
+
+  { tag:"Method", title:"Competitive UX Audits",
+    teaser:"A repeatable framework for structured competitor UX teardowns, seen through multiple personas.",
+    detail:"Method: a consistent rubric applied across competitors and viewed through five user personas. Impact: benchmarks that tell the team where to reach parity and where to differentiate." },
+
+  { tag:"Research ops", title:"Research Impact & Enablement",
+    teaser:"Frameworks to measure research quality and impact — plus self-serve tooling for stakeholders.",
+    detail:"Method: a tiered metrics framework and an impact ledger, paired with tooling that gives non-researchers safe access to validated outputs. Impact: research that proves its value and reaches people who never had access before." }
+];
+
+// ABILITIES — grouped skills shown in the About panel.
+const ABILITIES = [
+  { group:"Methods", items:["Usability testing","Foundational & generative research","Design-partner studies","Contextual inquiry","Survey design","Transcript analysis","Triangulation"] },
+  { group:"Focus areas", items:["AI-native research","Activation & onboarding","Platform & integration UX","Research ops & enablement","Stakeholder communication"] },
+  { group:"Tools", items:["Pendo (behavioral data)","Support-ticket analysis","Figma","Claude / AI tooling"] }
+];
+
+/* =========================================================================
+   ▲▲▲  END OF EDITABLE CONTENT. The journey engine is below.  ▲▲▲
+   ========================================================================= */
+
+const $ = id => document.getElementById(id);
+const N = JOURNEY.length;
+let active = 0, maxReached = 0, started = false;
+
+/* ---- one-time text injection ---- */
+$("brandName").textContent = PROFILE.name;
+$("brandRole").textContent = PROFILE.role.split("·")[0].trim();
+$("introName").textContent = PROFILE.name;
+$("introRole").textContent = PROFILE.role;
+$("introTag").textContent  = PROFILE.tagline;
+$("aboutName").textContent = "About " + PROFILE.name;
+$("aboutBio").textContent  = PROFILE.bio + (PROFILE.location ? "  Based in " + PROFILE.location + "." : "");
+
+/* ---- build project cards ---- */
+const grid = $("cardGrid");
+PROJECTS.forEach(p => {
+  const c = document.createElement("button");
+  c.className = "pcard"; c.type = "button";
+  c.innerHTML = '<span class="ptag">'+p.tag+'</span>'
+    + '<h4>'+p.title+'</h4>'
+    + '<p class="pteaser">'+p.teaser+'</p>'
+    + '<span class="pmore">Tap to read &rarr;</span>'
+    + '<p class="pdetail">'+p.detail+'</p>';
+  c.addEventListener("click", () => c.classList.toggle("open"));
+  grid.appendChild(c);
+});
+
+/* ---- build abilities ---- */
+const abil = $("abilGrid");
+ABILITIES.forEach(a => {
+  const col = document.createElement("div"); col.className = "abil";
+  col.innerHTML = '<h5>'+a.group+'</h5><div class="chips">'
+    + a.items.map(i => '<span class="chip">'+i+'</span>').join('') + '</div>';
+  abil.appendChild(col);
+});
+
+/* ---- build links ---- */
+$("linkRow").innerHTML =
+  '<a href="'+PROFILE.linkedin+'" target="_blank" rel="noopener">LinkedIn</a>'
+  + '<a class="ghost" href="mailto:'+PROFILE.email+'">Email</a>';
+
+/* ---- build the path nodes ---- */
+const near = $("near");
+const nodeEls = [];
+JOURNEY.forEach((ch,i) => {
+  const n = document.createElement("button");
+  n.className = "node"; n.type = "button";
+  n.setAttribute("aria-label","Chapter "+(i+1)+": "+ch.title);
+  n.innerHTML = '<span class="flag">'+ch.flag+'</span>'
+    + '<span class="lamp">'+(i+1)+'</span>'
+    + '<span class="post"></span>';
+  n.addEventListener("click", () => {
+    if (i <= maxReached) goTo(i, true);   // can revisit reached chapters / step to the next
+  });
+  near.appendChild(n);
+  nodeEls.push(n);
+});
+
+/* ---- floating motes (ambient) ---- */
+const motes = $("motes");
+for (let i=0;i<22;i++){
+  const m = document.createElement("div");
+  const s = 2 + Math.random()*4;
+  m.className = "mote";
+  m.style.width = m.style.height = s+"px";
+  m.style.left = (Math.random()*100)+"%";
+  m.style.animationDuration = (10+Math.random()*12)+"s";
+  m.style.animationDelay = (-Math.random()*18)+"s";
+  motes.appendChild(m);
+}
+/* ---- stars (night) ---- */
+const starWrap = $("stars");
+for (let i=0;i<90;i++){
+  const st = document.createElement("div");
+  st.className = "star";
+  st.style.left = (Math.random()*100)+"%";
+  st.style.top  = (Math.random()*70)+"%";
+  st.style.animationDelay = (-Math.random()*3.4)+"s";
+  starWrap.appendChild(st);
+}
+
+/* ---- geometry: where each node sits, and how far to pan the camera ---- */
+let SEG, startPad, nodeX = [];
+function layout(){
+  const vw = window.innerWidth;
+  SEG = Math.max(vw*0.5, 300);
+  startPad = vw*0.24;
+  nodeX = JOURNEY.map((_,i)=> startPad + i*SEG);
+  const worldW = startPad + (N-1)*SEG + vw*0.85;
+  ["far","mid","near","fore"].forEach(id => { $(id).style.width = worldW+"px"; });
+  nodeEls.forEach((n,i)=>{ n.style.left = nodeX[i]+"px"; n.style.bottom = (24 + Math.sin(i*1.1)*3)+"%"; });
+  applyCamera(false);
+}
+const PARALLAX = { far:0.25, mid:0.55, near:1.0, fore:1.18 };
+function applyCamera(animate){
+  const vw = window.innerWidth;
+  const camX = nodeX[active] - vw*0.24;
+  Object.keys(PARALLAX).forEach(id=>{
+    const el = $(id);
+    el.style.transition = animate ? "" : "none";
+    el.style.transform = "translateX(" + (-camX*PARALLAX[id]) + "px)";
+    if(!animate) requestAnimationFrame(()=> el.style.transition = "");
+  });
+}
+
+/* ---- sky cross-fade + sun/moon arc, driven by progress ---- */
+function tri(p,a,seg){ return Math.max(0, 1 - Math.abs(p-a)/seg); }
+function updateSky(){
+  const p = N>1 ? active/(N-1) : 0;
+  const seg = 1/3;
+  document.querySelector(".sky-dawn").style.opacity  = Math.max(tri(p,0,seg), p<0.001?1:0);
+  document.querySelector(".sky-day").style.opacity   = tri(p,1/3,seg);
+  document.querySelector(".sky-dusk").style.opacity  = tri(p,2/3,seg);
+  document.querySelector(".sky-night").style.opacity = tri(p,1,seg);
+  $("stars").style.opacity = tri(p,1,seg);
+  // sun rises to midday then sets: top goes high in the middle, low at the ends
+  const arc = 60 - Math.sin(p*Math.PI)*46;     // % from top
+  const orb = $("orb");
+  orb.style.top = arc + "%";
+  orb.style.background = p>0.78
+    ? "radial-gradient(circle at 38% 38%,#fdfdff,#dfe6ff 60%,rgba(223,230,255,0) 72%)"  // moon
+    : "radial-gradient(circle at 38% 38%,#fff6d8,#ffd166 60%,rgba(255,209,102,0) 72%)"; // sun
+  const labels = ["&#9728; Dawn","&#9728; Midday","&#9788; Dusk","&#9789; Night"];
+  const li = p<0.17?0 : p<0.5?1 : p<0.83?2 : 3;
+  $("todIcon").innerHTML = labels[li].split(" ")[0];
+}
+
+/* ---- show a chapter ---- */
+function setNodeStates(){
+  nodeEls.forEach((n,i)=>{
+    n.className = "node" + (
+      i===active ? " current"
+      : i<=maxReached ? " visited"
+      : i===maxReached+1 ? " next"
+      : " locked");
+  });
+}
+function sparkBurst(){
+  const hero = $("hero");
+  for(let i=0;i<14;i++){
+    const s = document.createElement("div");
+    s.className="spark";
+    const x=hero.offsetLeft, y=hero.offsetTop+10;
+    s.style.left=x+"px"; s.style.top=y+"px";
+    const ang=Math.random()*Math.PI*2, dist=40+Math.random()*60;
+    s.style.setProperty("--to","translate("+Math.cos(ang)*dist+"px,"+(Math.sin(ang)*dist-30)+"px)");
+    s.style.animation="burst .7s ease-out forwards";
+    s.style.background = Math.random()>0.5 ? "var(--gold)" : "var(--glow-soft)";
+    $("stage").appendChild(s);
+    setTimeout(()=>s.remove(),750);
+  }
+}
+function goTo(i, animate){
+  const forward = i>active;
+  active = Math.max(0, Math.min(N-1, i));
+  maxReached = Math.max(maxReached, active);
+
+  // walk animation
+  const hero = $("hero");
+  if(animate){ hero.classList.add("walking"); setTimeout(()=>hero.classList.remove("walking"),1600); }
+
+  applyCamera(true);
+  updateSky();
+  setNodeStates();
+
+  // story card swap
+  const ch = JOURNEY[active];
+  const card = $("story");
+  const swap = () => {
+    $("stEyebrow").textContent = "Chapter "+(active+1)+" · "+ch.eyebrow;
+    $("stTitle").textContent = ch.title;
+    $("stBody").textContent  = ch.body;
+    card.classList.add("show");
+  };
+  if(card.classList.contains("show")){
+    document.querySelectorAll(".swap").forEach(e=>e.style.opacity=0);
+    setTimeout(()=>{ swap(); document.querySelectorAll(".swap").forEach(e=>e.style.opacity=1); }, 350);
+  } else swap();
+
+  // hud
+  $("tracker").textContent = "Chapter "+(active+1)+" of "+N;
+  $("cta").innerHTML = active < N-1 ? "Continue &rarr;" : "Open Field Notes";
+
+  if(forward && animate) setTimeout(sparkBurst, 700);
+}
+
+/* ---- controls ---- */
+$("cta").addEventListener("click", ()=>{
+  if(active < N-1) goTo(active+1, true);
+  else openOverlay("ovProjects");
+});
+$("beginBtn").addEventListener("click", begin);
+function begin(){
+  if(started) return; started = true;
+  $("intro").classList.add("gone");
+  setTimeout(()=> goTo(0, true), 250);
+}
+$("navJourney").addEventListener("click", ()=>{ closeOverlays(); if(!started) begin(); });
+$("navProjects").addEventListener("click", ()=> openOverlay("ovProjects"));
+$("navAbout").addEventListener("click",   ()=> openOverlay("ovAbout"));
+document.querySelectorAll("[data-close]").forEach(b=>
+  b.addEventListener("click", ()=> $(b.dataset.close).classList.remove("open")));
+function openOverlay(id){ closeOverlays(); $(id).classList.add("open"); }
+function closeOverlays(){ document.querySelectorAll(".overlay").forEach(o=>o.classList.remove("open")); }
+document.querySelectorAll(".overlay").forEach(o=>
+  o.addEventListener("click", e=>{ if(e.target===o) o.classList.remove("open"); }));
+
+document.addEventListener("keydown", e=>{
+  if(!started){ if(e.key==="Enter"||e.key===" ") begin(); return; }
+  if(document.querySelector(".overlay.open")){ if(e.key==="Escape") closeOverlays(); return; }
+  if(e.key==="ArrowRight"||e.key===" "){ e.preventDefault(); if(active<N-1) goTo(active+1,true); }
+  if(e.key==="ArrowLeft"){ if(active>0) goTo(active-1,true); }
+  if(e.key==="Escape") closeOverlays();
+});
+
+/* ---- init ---- */
+/* Panning is done entirely with CSS transforms, so the stage itself should
+   never scroll. The oversized parallax strips make it technically scrollable,
+   and clicking a chapter node far to the right can make the browser auto-scroll
+   it into view — which would shift the whole backdrop. This pins scroll to 0. */
+const stageEl = $("stage");
+stageEl.addEventListener("scroll", ()=>{ stageEl.scrollLeft = 0; stageEl.scrollTop = 0; });
+
+let rT;
+window.addEventListener("resize", ()=>{ clearTimeout(rT); rT=setTimeout(layout,150); });
+layout();
+updateSky();
+setNodeStates();
+</script>
+</body>
+</html>
